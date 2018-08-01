@@ -25,3 +25,18 @@ test: all
 	    -XX:OnOutOfMemoryError='/bin/echo hello' \
 	    -agentpath:$(PWD)/$(TARGET) \
 	    -cp $(PWD) JvmKillTest
+
+grey: all
+	$(JAVA_HOME)/bin/javac JvmKillTestGreyFailure.java
+	$(JAVA_HOME)/bin/java -Xmx100m \
+	    -XX:OnOutOfMemoryError='/bin/echo OOMKILL' \
+		-XX:+UseParNewGC \
+		-XX:+UseConcMarkSweepGC \
+		-XX:CMSInitiatingOccupancyFraction=75 \
+		-XX:+PrintGCDetails \
+		-XX:+PrintGCDateStamps \
+		-XX:+PrintGCApplicationConcurrentTime \
+		-XX:+PrintGCApplicationStoppedTime \
+		-Xloggc:gclog \
+	    -agentpath:$(PWD)/$(TARGET) \
+	    -cp $(PWD) JvmKillTestGreyFailure
