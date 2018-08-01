@@ -33,6 +33,18 @@ resourceExhausted(
    kill(getpid(), SIGKILL);
 }
 
+static void JNICALL
+gcStarted(jvmtiEnv *jvmti_env)
+{
+    fprintf(stderr, "Got a GC Start!\n");
+}
+
+static void JNICALL
+gcFinished(jvmtiEnv *jvmti_env)
+{
+    fprintf(stderr, "Got a GC End!\n");
+}
+
 JNIEXPORT jint JNICALL
 Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 {
@@ -49,6 +61,8 @@ Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
    memset(&callbacks, 0, sizeof(callbacks));
 
    callbacks.ResourceExhausted = &resourceExhausted;
+   callbacks.GarbageCollectionStart = &gcStarted;
+   callbacks.GarbageCollectionFinish = &gcFinished;
 
    err = (*jvmti)->SetEventCallbacks(jvmti, &callbacks, sizeof(callbacks));
    if (err != JVMTI_ERROR_NONE) {
@@ -60,6 +74,20 @@ Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
          jvmti, JVMTI_ENABLE, JVMTI_EVENT_RESOURCE_EXHAUSTED, NULL);
    if (err != JVMTI_ERROR_NONE) {
       fprintf(stderr, "ERROR: SetEventNotificationMode failed: %d\n", err);
+      return JNI_ERR;
+   }
+
+
+   // Ask for ability to get GC events
+   jvmtiCapabilities   capabilities;
+   (void)memset(&capabilities, 0, sizeof(capabilities));
+   capabilities.can_generate_garbage_collection_events = 1;
+   err = (*jvmti)->AddCapabilities(jvmti, &capabilities);
+
+   err = (*jvmti)->SetEventNotificationMode(
+         jvmti, JVMTI_ENABLE, JVMTI_EVENT_GARBAGE_COLLECTION_START, NULL);
+   if (err != JVMTI_ERROR_NONE) {
+      fprintf(stderr, "ERROR: SetEventNotificationMode GC start failed: %d\n", err);
       return JNI_ERR;
    }
 
